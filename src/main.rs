@@ -1,8 +1,6 @@
-use std::io::Read;
+use std::io::{Read, Seek};
 
 fn main() {
-    println!("Hello, world!");
-
     let args: Vec<String> = std::env::args().collect();
 
     // open file
@@ -12,6 +10,8 @@ fn main() {
 
     let mut memory = vec![0_u8; 30_000];
     let mut pointer = 0;
+    let mut stack = Vec::new();
+    let mut pc = 0_u64;
 
     // read file byte by byte
     let mut buffer = [0; 1];
@@ -21,6 +21,7 @@ fn main() {
             break;
         }
         
+        // print!("{:?}", buffer[0] as char);
         match buffer[0] as char {
             '>' => {
                 pointer += 1;
@@ -34,19 +35,28 @@ fn main() {
                 }
                 pointer -= 1;
             }
-            '+' => {
-                memory[pointer] += 1;
-            }
-            '-' => {
-                memory[pointer] -= 1;
-            }
-            '[' => todo!("Implement loop start"),
-            ']' => todo!("Implement loop end"),
+            '+' => memory[pointer] += 1,
+            '-' => memory[pointer] -= 1,
+            '[' => {
+                stack.push(pc);
+            },
+            ']' => {
+                if stack.is_empty() {
+                    panic!("Unmatched closing bracket");
+                }
+                if memory[pointer] != 0 {
+                    let start = stack.pop().unwrap();
+                    pc = start-1;
+                    reader.seek(std::io::SeekFrom::Start(start)).expect("Unable to seek");
+                } else {
+                    stack.pop();
+                }
+            },
             ',' => todo!("Implement input"),
-            '.' => {
-                print!("{}", memory[pointer] as char);
-            }
+            '.' => print!("{}", memory[pointer] as char),
             _ => {}
         }
+
+        pc += 1;
     }
 }
