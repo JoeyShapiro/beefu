@@ -24,26 +24,18 @@ fn main() {
         i += 1;
     }
 
-    // open file
-    let file = std::fs::File::open(&args[1]).expect("Unable to open file");
-    // read file
-    let mut reader = std::io::BufReader::new(file);
-
     let mut memory = vec![0_u8; mem_size];
     let mut pointer = 0;
     let mut stack = Vec::new();
-    let mut pc = 0_u64;
+    let mut pc = 0_usize;
+    let rom = std::fs::read(&args[1]).expect("Unable to read file");
 
-    // read file byte by byte
-    let mut buffer = [0; 1];
     loop {
-        let n = reader.read(&mut buffer).expect("Unable to read file");
-        if n == 0 {
+        if pc >= rom.len() {
             break;
         }
-        
-        // print!("{:?}", buffer[0] as char);
-        match buffer[0] as char {
+
+        match rom[pc] as char {
             '>' => {
                 pointer += 1;
                 if pointer >= memory.len() {
@@ -66,7 +58,6 @@ fn main() {
                 if memory[pointer] != 0 {
                     let start = stack.pop().unwrap();
                     pc = start-1;
-                    reader.seek(std::io::SeekFrom::Start(start)).expect("Unable to seek");
                 } else {
                     stack.pop();
                 }
