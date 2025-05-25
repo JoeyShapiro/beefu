@@ -37,9 +37,7 @@ fn main() {
             }
             '+' => memory[pointer] += 1,
             '-' => memory[pointer] -= 1,
-            '[' => {
-                stack.push(pc);
-            },
+            '[' => stack.push(pc),
             ']' => {
                 if stack.is_empty() {
                     panic!("Unmatched closing bracket");
@@ -52,7 +50,11 @@ fn main() {
                     stack.pop();
                 }
             },
-            ',' => todo!("Implement input"),
+            ',' => {
+                let mut input = [0; 1];
+                std::io::stdin().read_exact(&mut input).expect("Unable to read input");
+                memory[pointer] = input[0];
+            },
             '.' => print!("{}", memory[pointer] as char),
             _ => {}
         }
