@@ -51,11 +51,19 @@ fn main() {
                 }
             },
             ',' => {
-                let mut input = [0; 1];
-                std::io::stdin().read_exact(&mut input).expect("Unable to read input");
+                // reading line is not correct, what if they want to insert \n
+                // has many problems, but cant handle in simple way
+                // read from stdin with newline
+                // thought there was a getch, but maybe not
+                // doesnt matter though, i will have ui anyway
+                let mut input = [0; 2];
+                std::io::stdin().read(&mut input).expect("Unable to read input");
                 memory[pointer] = input[0];
             },
-            '.' => print!("{}", memory[pointer] as char),
+            '.' => {
+                print!("{}", memory[pointer] as char);
+                std::io::Write::flush(&mut std::io::stdout()).unwrap();
+            },
             _ => {}
         }
 
