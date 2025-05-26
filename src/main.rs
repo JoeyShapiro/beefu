@@ -1,4 +1,7 @@
-use std::io::{Read, Seek};
+use std::io::Read;
+// wanted to use bindings, but that seems like more work
+// bindings could teach the "real" way, but might learn more in rust. yeah
+// https://wayland-book.com/wayland-display/creation.html
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
