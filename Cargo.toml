@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+wayland-client = { version = "0.31.0" }
+wayland-protocols = { version = "0.32.0", features = [ "client" ] }
+wayland-sys = { version = "0.31.6", features = ["dlopen"] }
+tempfile = "3.2"
