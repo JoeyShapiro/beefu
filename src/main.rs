@@ -21,6 +21,7 @@ fn main() {
 
     let mut delay = 0;
     let mut mem_size = 30_000;
+    let mut file = "";
     let mut i = 0;
     while i < args.len() {
         if args[i] == "--ops" {
@@ -35,9 +36,15 @@ fn main() {
                 panic!("Memory size must be greater than 0");
             }
             i += 1;
+        } else {
+            file = &args[i];
         }
 
         i += 1;
+    }
+
+    if file.is_empty() {
+        panic!("file must be specified")
     }
 
     let conn = Connection::connect_to_env().unwrap();
@@ -67,7 +74,7 @@ fn main() {
     let mut pointer = 0;
     let mut stack = Vec::new();
     let mut pc = 0_usize;
-    let rom = std::fs::read(&args[1]).expect("Unable to read file");
+    let rom = std::fs::read(file).expect("Unable to read file");
 
     loop {
         if pc >= rom.len() {
