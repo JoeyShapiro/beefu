@@ -5,6 +5,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
@@ -14,6 +15,7 @@ use winit::window::{Window, WindowId};
 struct AppState<'a> {
     window: Option<Arc<Window>>,
     pixels: Option<pixels::Pixels<'a>>,
+    size: PhysicalSize<u32>,
 }
 
 impl<'a> ApplicationHandler for AppState<'a> {
@@ -21,13 +23,14 @@ impl<'a> ApplicationHandler for AppState<'a> {
         let window_attributes = Window::default_attributes().with_title("A fantastic window!");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        let window_size = window.as_ref().inner_size();
+        let window_size = window.as_ref().outer_size();
         let surface_texture = pixels::SurfaceTexture::new(
             window_size.width, 
             window_size.height, 
             window.clone()
         );
         
+        self.size = PhysicalSize::new(1280, 720);
         self.pixels = Some(pixels::Pixels::new(1280, 720, surface_texture)
                 .expect("Failed to create pixels"));
         self.window = Some(window);
@@ -49,7 +52,9 @@ impl<'a> ApplicationHandler for AppState<'a> {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 if let Some(pixels) = &mut self.pixels {
-                    // Use pixels here for rendering
+                    clear_background(pixels.frame_mut(), [0, 0, 0, 255]);
+                    draw_rect(self.size, pixels.frame_mut(), 0, 0, 100, 100, [255, 0, 0, 255]);
+
                     pixels.render().unwrap();
                 }
                 window.request_redraw();
@@ -109,6 +114,7 @@ fn main() {
         // throttle the loop in the app somehow.
         sleep(Duration::from_millis(16));
     }
+    return;
 
     let mut memory = vec![0_u8; mem_size];
     let mut pointer = 0;
@@ -172,26 +178,27 @@ fn main() {
     }
 }
 
-fn draw(frame: &mut [u8]) {
+fn clear_background(frame: &mut [u8], color: [u8; 4]) {
     // Clear screen to black
     for pixel in frame.chunks_exact_mut(4) {
-        pixel[0] = 0x00; // R
-        pixel[1] = 0x00; // G  
-        pixel[2] = 0x00; // B
-        pixel[3] = 0xff; // A
+        pixel[0] = color[0]; // R
+        pixel[1] = color[1]; // G  
+        pixel[2] = color[2]; // B
+        pixel[3] = color[3]; // A
     }
-    
-    // Draw a simple pattern
-    for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-        let x = (i % 1280 as usize) as i16;
-        let y = (i / 1280 as usize) as i16;
-        
-        // Draw a red square in the middle
-        if x > 350 && x < 450 && y > 250 && y < 350 {
-            pixel[0] = 0xff; // R
-            pixel[1] = 0x00; // G
-            pixel[2] = 0x00; // B
-            pixel[3] = 0xff; // A
+}
+
+fn draw_rect(size: PhysicalSize<u32>, frame: &mut [u8], x: u32, y: u32, width: u32, height: u32, color: [u8; 4]) {
+    for j in 0..height {
+        for i in 0..width {
+            // u32 is big enough (4k*4k*4) = 64MB, so we use u32
+            let pixel_index = ((y + j) * (size.width * 4) + (x + i) * 4) as usize;
+            if pixel_index < frame.len() {
+                frame[pixel_index] = color[0];     // R
+                frame[pixel_index + 1] = color[1]; // G
+                frame[pixel_index + 2] = color[2]; // B
+                frame[pixel_index + 3] = color[3]; // A
+            }
         }
     }
 }
