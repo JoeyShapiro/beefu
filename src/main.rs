@@ -30,8 +30,9 @@ impl<'a> ApplicationHandler for AppState<'a> {
             window.clone()
         );
         
-        self.size = PhysicalSize::new(1280, 720);
-        self.pixels = Some(pixels::Pixels::new(1280, 720, surface_texture)
+        // 1280 x 720
+        self.size = PhysicalSize::new(window.outer_size().width, window.outer_size().height);
+        self.pixels = Some(pixels::Pixels::new(self.size.width, self.size.height, surface_texture)
                 .expect("Failed to create pixels"));
         self.window = Some(window);
         self.window.as_ref().unwrap().request_redraw();
