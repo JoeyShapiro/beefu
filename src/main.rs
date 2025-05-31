@@ -61,35 +61,40 @@ impl<'a> ApplicationHandler for AppState<'a> {
                 if let Some(pixels) = &mut self.pixels {
                     let offset = self.size.width / 2;
                     clear_background(pixels.frame_mut(), [80, 80, 80, 255]);
+                    let font = self.font.as_ref().unwrap();
+                    let (metrics, bitmap) = font.rasterize('0', 32.0);
+                    let (metrics_gt, bitmap_gt) = font.rasterize('>', 32.0);
+                    let (metrics_lt, bitmap_lt) = font.rasterize('<', 32.0);
+                    let (metrics_plus, bitmap_plus) = font.rasterize('+', 32.0);
+                    let (metrics_minus, bitmap_minus) = font.rasterize('-', 32.0);
+                    let (metrics_bracket_open, bitmap_bracket_open) = font.rasterize('[', 32.0);
+                    let (metrics_bracket_close, bitmap_bracket_close) = font.rasterize(']', 32.0);
+                    let (metrics_comma, bitmap_comma) = font.rasterize(',', 32.0);
+                    let (metrics_dot, bitmap_dot) = font.rasterize('.', 32.0);
 
                     for i in 0..9 {
                         draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 200, 64, 64, [0, 255, 0, 255]);
+                        draw_char(self.size, pixels.frame_mut(), metrics, &bitmap, 96+i*66, 200);
                     }
                     for i in 0..9 {
                         draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 400, 64, 64, [0, 255, 0, 255]);
+                        match self.rom[i as usize] as char {
+                            '>' => draw_char(self.size, pixels.frame_mut(), metrics_gt, &bitmap_gt, 96+i*66, 400),
+                            '<' => draw_char(self.size, pixels.frame_mut(), metrics_lt, &bitmap_lt, 96+i*66, 400),
+                            '+' => draw_char(self.size, pixels.frame_mut(), metrics_plus, &bitmap_plus, 96+i*66, 400),
+                            '-' => draw_char(self.size, pixels.frame_mut(), metrics_minus, &bitmap_minus, 96+i*66, 400),
+                            '[' => draw_char(self.size, pixels.frame_mut(), metrics_bracket_open, &bitmap_bracket_open, 96+i*66, 400),
+                            ']' => draw_char(self.size, pixels.frame_mut(), metrics_bracket_close, &bitmap_bracket_close, 96+i*66, 400),
+                            ',' => draw_char(self.size, pixels.frame_mut(), metrics_comma, &bitmap_comma, 96+i*66, 400),
+                            '.' => draw_char(self.size, pixels.frame_mut(), metrics_dot, &bitmap_dot, 96+i*66, 400),
+                            _ => {},
+                        }
                     }
 
-                    let font = self.font.as_ref().unwrap();
-                    let (metrics, bitmap) = font.rasterize('0', 32.0);
                     for i in 0..16 {
                         for j in 0..32 {
                             draw_rect(self.size, pixels.frame_mut(), offset+i*38, j*38, 36, 36, [255, 0, 0, 255]);
-                            for (k, b) in bitmap.iter().enumerate() {
-                                if *b < 64 {
-                                    continue;
-                                }
-                                let x = k as u32 % metrics.width as u32 + offset + i * 38;
-                                let y = k as u32 / metrics.width as u32 + j * 38;
-                                if x < self.size.width && y < self.size.height {
-                                    let pixel_index = (y * self.size.width + x) as usize * 4;
-                                    if pixel_index < pixels.frame().len() {
-                                        pixels.frame_mut()[pixel_index]     = 255; // R
-                                        pixels.frame_mut()[pixel_index + 1] = 255; // G
-                                        pixels.frame_mut()[pixel_index + 2] = 255; // B
-                                        pixels.frame_mut()[pixel_index + 3] = 255; // A
-                                    }
-                                }
-                            }
+                            draw_char(self.size, pixels.frame_mut(), metrics, &bitmap, offset+i*38, j*38);
                         }
                     }
 
@@ -108,7 +113,7 @@ fn main() {
     let mut delay = 0;
     let mut mem_size = 30_000;
     let mut file = "";
-    let mut i = 0;
+    let mut i = 1;
     while i < args.len() {
         if args[i] == "--ops" {
             let ops = args[i + 1].parse::<f32>().expect("Unable to parse ops");
@@ -244,6 +249,25 @@ fn draw_rect(size: PhysicalSize<u32>, frame: &mut [u8], x: u32, y: u32, width: u
                 frame[pixel_index + 1] = color[1]; // G
                 frame[pixel_index + 2] = color[2]; // B
                 frame[pixel_index + 3] = color[3]; // A
+            }
+        }
+    }
+}
+
+fn draw_char(size: PhysicalSize<u32>, frame: &mut [u8], metrics: fontdue::Metrics, bitmap: &Vec<u8>, i: u32, j: u32) {
+    for (k, b) in bitmap.iter().enumerate() {
+        if *b < 64 {
+            continue;
+        }
+        let x = k as u32 % metrics.width as u32 + i;
+        let y = k as u32 / metrics.width as u32 + j;
+        if x < size.width && y < size.height {
+            let pixel_index = (y * size.width + x) as usize * 4;
+            if pixel_index < frame.len() {
+                frame[pixel_index]     = 255; // R
+                frame[pixel_index + 1] = 255; // G
+                frame[pixel_index + 2] = 255; // B
+                frame[pixel_index + 3] = 255; // A
             }
         }
     }
