@@ -16,6 +16,11 @@ struct AppState<'a> {
     window: Option<Arc<Window>>,
     pixels: Option<pixels::Pixels<'a>>,
     size: PhysicalSize<u32>,
+    rom: Vec<u8>,
+    memory: Vec<u8>,
+    pointer: usize,
+    stack: Vec<usize>,
+    pc: usize,
 }
 
 impl<'a> ApplicationHandler for AppState<'a> {
@@ -53,8 +58,21 @@ impl<'a> ApplicationHandler for AppState<'a> {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 if let Some(pixels) = &mut self.pixels {
-                    clear_background(pixels.frame_mut(), [0, 0, 0, 255]);
-                    draw_rect(self.size, pixels.frame_mut(), 0, 0, 100, 100, [255, 0, 0, 255]);
+                    let offset = self.size.width / 2;
+                    clear_background(pixels.frame_mut(), [80, 80, 80, 255]);
+
+                    for i in 0..9 {
+                        draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 200, 64, 64, [0, 255, 0, 255]);
+                    }
+                    for i in 0..9 {
+                        draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 400, 64, 64, [0, 255, 0, 255]);
+                    }
+
+                    for i in 0..16 {
+                        for j in 0..32 {
+                            draw_rect(self.size, pixels.frame_mut(), offset+i*50, j*50, 48, 48, [255, 0, 0, 255]);
+                        }
+                    }
 
                     pixels.render().unwrap();
                 }
@@ -97,12 +115,13 @@ fn main() {
     }
 
     let mut event_loop = EventLoop::new().unwrap();
-    let mut app = Arc::new(AppState::default());
+    let app = Arc::new(std::sync::Mutex::new(AppState::default()));
+
+    app.lock().unwrap().rom = std::fs::read(file).expect("Unable to read file");
 
     loop {
         let timeout = Some(Duration::ZERO);
-        let status = event_loop.pump_app_events(timeout, &mut Arc::get_mut(&mut app)
-            .expect("Failed to get mutable reference"));
+        let status = event_loop.pump_app_events(timeout, &mut *app.lock().unwrap());
 
         if let PumpStatus::Exit(_code) = status {
             println!("Exiting application");
