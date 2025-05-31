@@ -1,7 +1,6 @@
 use std::io::Read;
 
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 
 use winit::application::ApplicationHandler;
@@ -22,6 +21,17 @@ struct AppState<'a> {
     pointer: usize,
     stack: Vec<usize>,
     pc: usize,
+}
+
+impl AppState<'_> {
+    fn update(&mut self) {
+        let window = match self.window.as_ref() {
+            Some(window) => window,
+            None => return,
+        };
+
+        window.request_redraw();
+    }
 }
 
 impl<'a> ApplicationHandler for AppState<'a> {
@@ -90,7 +100,6 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                     pixels.render().unwrap();
                 }
-                window.request_redraw();
             },
             _ => (),
         }
@@ -184,9 +193,13 @@ fn main() {
         // Parse it into the font type.
         let font = fontdue::Font::from_bytes(data, fontdue::FontSettings::default()).unwrap();
         app.lock().unwrap().renderer = Some(Renderer::new(font));
+
+        app.lock().unwrap().memory = vec![0_u8; mem_size];
     }
 
     loop {
+        app.lock().unwrap().update();
+
         let timeout = Some(Duration::ZERO);
         let status = event_loop.pump_app_events(timeout, &mut *app.lock().unwrap());
 
@@ -195,72 +208,70 @@ fn main() {
             break;
         }
 
-        // Sleep for 1/60 second to simulate application work
-        //
-        // Since `pump_events` doesn't block it will be important to
-        // throttle the loop in the app somehow.
-        sleep(Duration::from_millis(16));
-    }
-    return;
-
-    let mut memory = vec![0_u8; mem_size];
-    let mut pointer = 0;
-    let mut stack = Vec::new();
-    let mut pc = 0_usize;
-    let rom = std::fs::read(file).expect("Unable to read file");
-
-    loop {
-        if pc >= rom.len() {
-            break;
+        // vm loop
+        {
+            let mut app = app.lock().unwrap();
+            let mut pointer = app.pointer;
+            let mut pc = app.pc;
+            
+            if pc >= app.rom.len() {
+                break;
+            }
+    
+            match app.rom[pc] as char {
+                '>' => {
+                    pointer += 1;
+                    if pointer >= app.memory.len() {
+                        panic!("Pointer out of bounds");
+                    }
+                }
+                '<' => {
+                    if pointer == 0 {
+                        panic!("Pointer out of bounds");
+                    }
+                    pointer -= 1;
+                }
+                '+' => app.memory[pointer] += 1,
+                '-' => app.memory[pointer] -= 1,
+                '[' => app.stack.push(pc),
+                ']' => {
+                    if app.stack.is_empty() {
+                        panic!("Unmatched closing bracket");
+                    }
+                    if app.memory[pointer] != 0 {
+                        let start = app.stack.pop().unwrap();
+                        pc = start - 1;
+                    } else {
+                        app.stack.pop();
+                    }
+                },
+                ',' => {
+                    // reading line is not correct, what if they want to insert \n
+                    // has many problems, but cant handle in simple way
+                    // read from stdin with newline
+                    // thought there was a getch, but maybe not
+                    // doesnt matter though, i will have ui anyway
+                    let mut input = [0; 2];
+                    std::io::stdin().read(&mut input).expect("Unable to read input");
+                    app.memory[pointer] = input[0];
+                },
+                '.' => {
+                    print!("{}", app.memory[pointer] as char);
+                    std::io::Write::flush(&mut std::io::stdout()).unwrap();
+                },
+                _ => {}
+            }
+    
+            pc += 1;
+            app.pc = pc;
+            app.pointer = pointer;
         }
 
-        match rom[pc] as char {
-            '>' => {
-                pointer += 1;
-                if pointer >= memory.len() {
-                    panic!("Pointer out of bounds");
-                }
-            }
-            '<' => {
-                if pointer == 0 {
-                    panic!("Pointer out of bounds");
-                }
-                pointer -= 1;
-            }
-            '+' => memory[pointer] += 1,
-            '-' => memory[pointer] -= 1,
-            '[' => stack.push(pc),
-            ']' => {
-                if stack.is_empty() {
-                    panic!("Unmatched closing bracket");
-                }
-                if memory[pointer] != 0 {
-                    let start = stack.pop().unwrap();
-                    pc = start-1;
-                } else {
-                    stack.pop();
-                }
-            },
-            ',' => {
-                // reading line is not correct, what if they want to insert \n
-                // has many problems, but cant handle in simple way
-                // read from stdin with newline
-                // thought there was a getch, but maybe not
-                // doesnt matter though, i will have ui anyway
-                let mut input = [0; 2];
-                std::io::stdin().read(&mut input).expect("Unable to read input");
-                memory[pointer] = input[0];
-            },
-            '.' => {
-                print!("{}", memory[pointer] as char);
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            },
-            _ => {}
-        }
-
-        pc += 1;
         if delay > 0 {
+            // TODO move update into here or something
             std::thread::sleep(std::time::Duration::from_millis(delay));
+        } else {
+            std::thread::sleep(std::time::Duration::from_millis(200));
         }
     }
 }
