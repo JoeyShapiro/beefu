@@ -16,6 +16,7 @@ struct AppState<'a> {
     window: Option<Arc<Window>>,
     pixels: Option<pixels::Pixels<'a>>,
     size: PhysicalSize<u32>,
+    font: Option<fontdue::Font>,
     rom: Vec<u8>,
     memory: Vec<u8>,
     pointer: usize,
@@ -68,9 +69,27 @@ impl<'a> ApplicationHandler for AppState<'a> {
                         draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 400, 64, 64, [0, 255, 0, 255]);
                     }
 
+                    let font = self.font.as_ref().unwrap();
+                    let (metrics, bitmap) = font.rasterize('0', 32.0);
                     for i in 0..16 {
                         for j in 0..32 {
-                            draw_rect(self.size, pixels.frame_mut(), offset+i*50, j*50, 48, 48, [255, 0, 0, 255]);
+                            draw_rect(self.size, pixels.frame_mut(), offset+i*38, j*38, 36, 36, [255, 0, 0, 255]);
+                            for (k, b) in bitmap.iter().enumerate() {
+                                if *b < 64 {
+                                    continue;
+                                }
+                                let x = k as u32 % metrics.width as u32 + offset + i * 38;
+                                let y = k as u32 / metrics.width as u32 + j * 38;
+                                if x < self.size.width && y < self.size.height {
+                                    let pixel_index = (y * self.size.width + x) as usize * 4;
+                                    if pixel_index < pixels.frame().len() {
+                                        pixels.frame_mut()[pixel_index]     = 255; // R
+                                        pixels.frame_mut()[pixel_index + 1] = 255; // G
+                                        pixels.frame_mut()[pixel_index + 2] = 255; // B
+                                        pixels.frame_mut()[pixel_index + 3] = 255; // A
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -117,7 +136,14 @@ fn main() {
     let mut event_loop = EventLoop::new().unwrap();
     let app = Arc::new(std::sync::Mutex::new(AppState::default()));
 
-    app.lock().unwrap().rom = std::fs::read(file).expect("Unable to read file");
+    {
+        app.lock().unwrap().rom = std::fs::read(file).expect("Unable to read file");
+
+        // Read the font data.
+        let font = include_bytes!("../res/JetBrainsMono-Medium.ttf") as &[u8];
+        // Parse it into the font type.
+        app.lock().unwrap().font = Some(fontdue::Font::from_bytes(font, fontdue::FontSettings::default()).unwrap());
+    }
 
     loop {
         let timeout = Some(Duration::ZERO);
