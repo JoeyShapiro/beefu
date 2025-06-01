@@ -87,8 +87,14 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                     // print the rom data
                     for i in 0..9 {
-                        draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 400, 64, 64, [0, 255, 0, 255]);
-                        renderer.draw_char(self.size, pixels.frame_mut(), self.rom[i as usize] as char, 96 + i * 66, 400);
+                        if (self.pc + i) as i32 - 4 < 0 || self.pc+i >= self.rom.len() {
+                            continue;
+                        }
+
+                        let pc = self.pc + i - 4;
+                        let x = (96 + i * 66) as u32;
+                        draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, [68, 71, 90, 255]);
+                        renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400);
                     }
 
                     for i in 0..16 {
