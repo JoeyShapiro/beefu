@@ -135,7 +135,8 @@ impl<'a> ApplicationHandler for AppState<'a> {
                             pixels.frame_mut(), 
                             self.memory[pointer],
                             x, 
-                            200
+                            200,
+                            THEME_FOREGROUND
                         );
                     }
 
@@ -153,14 +154,14 @@ impl<'a> ApplicationHandler for AppState<'a> {
                             THEME_SELECTION
                         };
                         draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, color);
-                        renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400);
-                        renderer.draw_number(self.size, pixels.frame_mut(), pc as u8, x, 440);
+                        renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400, THEME_FOREGROUND);
+                        renderer.draw_number(self.size, pixels.frame_mut(), pc as u8, x, 440, THEME_FOREGROUND);
                     }
 
                     let js = self.size.height / MEM_BLOCK - 1;
                     for j in 0..js {
                         let y = j as u32 * MEM_BLOCK;
-                        renderer.draw_number(self.size, pixels.frame_mut(), j as u8, offset-MEM_BLOCK, y);
+                        renderer.draw_number(self.size, pixels.frame_mut(), j as u8, offset-MEM_BLOCK, y, THEME_FOREGROUND);
                     }
 
                     for i in 0..16 {
@@ -185,8 +186,9 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                         self.size,
                                         pixels.frame_mut(), 
                                         self.memory[pointer],
-                                        x + 2, 
-                                        y + 2
+                                        x + 2,
+                                        y + 2,
+                                        THEME_FOREGROUND
                                     );
                                 },
                                 Layout::Ascii => {
@@ -197,7 +199,8 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                             pixels.frame_mut(), 
                                             c, 
                                             x + 2, 
-                                            y + 2
+                                            y + 2,
+                                            THEME_FOREGROUND
                                         );
                                     } else {
                                         renderer.draw_number(
@@ -205,7 +208,8 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                             pixels.frame_mut(), 
                                             self.memory[pointer],
                                             x + 2, 
-                                            y + 2
+                                            y + 2,
+                                            THEME_BACKGROUND
                                         );
                                     }
                                 },
@@ -253,7 +257,7 @@ impl Renderer {
         (metrics, bitmap)
     }
 
-    fn draw_char(&mut self, size: PhysicalSize<u32>, frame: &mut [u8], c: char, i: u32, j: u32) {
+    fn draw_char(&mut self, size: PhysicalSize<u32>, frame: &mut [u8], c: char, i: u32, j: u32, color: [u8; 4]) {
         let (metrics, bitmap) = self.get_char(c);
 
         for (k, b) in bitmap.iter().enumerate() {
@@ -265,23 +269,23 @@ impl Renderer {
             if x < size.width && y < size.height {
                 let pixel_index = (y * size.width + x) as usize * 4;
                 if pixel_index < frame.len() {
-                    frame[pixel_index]     = THEME_FOREGROUND[0]; // R
-                    frame[pixel_index + 1] = THEME_FOREGROUND[1]; // G
-                    frame[pixel_index + 2] = THEME_FOREGROUND[2]; // B
-                    frame[pixel_index + 3] = THEME_FOREGROUND[3]; // A
+                    frame[pixel_index]     = color[0]; // R
+                    frame[pixel_index + 1] = color[1]; // G
+                    frame[pixel_index + 2] = color[2]; // B
+                    frame[pixel_index + 3] = color[3]; // A
                 }
             }
         }
     }
 
-    fn draw_number(&mut self, size: PhysicalSize<u32>, frame: &mut [u8], n: u8, x: u32, y: u32) {
+    fn draw_number(&mut self, size: PhysicalSize<u32>, frame: &mut [u8], n: u8, x: u32, y: u32, color: [u8; 4]) {
         // assumes mono font
         let (metrics, _) = self.get_char('0');
         let w = metrics.width as u32;
 
         // could use n % 10; n /= 10
         for (i, c) in n.to_string().chars().enumerate() {
-            self.draw_char(size, frame, c, x + i as u32 * w, y);
+            self.draw_char(size, frame, c, x + i as u32 * w, y, color);
         }
     }
 }
