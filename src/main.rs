@@ -112,6 +112,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
                         };
                         draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, color);
                         renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400);
+                        renderer.draw_number(self.size, pixels.frame_mut(), pc as u8, x, 440);
                     }
 
                     for i in 0..16 {
@@ -121,9 +122,15 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                 continue;
                             }
 
-                            let x = offset + i as u32 * 38;
-                            let y = j as u32 * 38;
-                            draw_rect(self.size, pixels.frame_mut(), x, y, 36, 36, [68, 71, 90, 255]);
+                            let x = offset + i as u32 * 50;
+                            let y = j as u32 * 50;
+                            // handles underflow. usize.saturating_sub(4)
+                            let color = if pointer+4 >= self.pointer && pointer <= self.pointer+4 {
+                                [98, 114, 164, 255] // comment
+                            } else {
+                                [68, 71, 90, 255] // selection
+                            };
+                            draw_rect(self.size, pixels.frame_mut(), x, y, 48, 48, color);
                             renderer.draw_number(
                                 self.size,
                                 pixels.frame_mut(), 
