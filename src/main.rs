@@ -39,7 +39,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
         let window_attributes = Window::default_attributes().with_title("A fantastic window!");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        let window_size = window.as_ref().outer_size();
+        let window_size = window.as_ref().inner_size();
         let surface_texture = pixels::SurfaceTexture::new(
             window_size.width, 
             window_size.height, 
@@ -47,7 +47,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
         );
         
         // 1280 x 720
-        self.size = PhysicalSize::new(window.outer_size().width, window.outer_size().height);
+        self.size = PhysicalSize::new(window.inner_size().width, window.inner_size().height);
         self.pixels = Some(pixels::Pixels::new(self.size.width, self.size.height, surface_texture)
                 .expect("Failed to create pixels"));
         self.window = Some(window);
