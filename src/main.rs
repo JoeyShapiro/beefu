@@ -70,7 +70,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
             WindowEvent::RedrawRequested => {
                 if let Some(pixels) = &mut self.pixels {
                     let offset = self.size.width / 2;
-                    clear_background(pixels.frame_mut(), [80, 80, 80, 255]);
+                    clear_background(pixels.frame_mut(), [40, 42, 54, 255]);
                     let renderer = self.renderer.as_mut().unwrap();
 
                     // print the memory nearby
@@ -81,7 +81,13 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                         let pointer = self.pointer + i - 4;
                         let x = (96 + i * 66) as u32;
-                        draw_rect(self.size, pixels.frame_mut(), x, 200, 64, 64, [68, 71, 90, 255]);
+                        // odd using comment for current, but looks better
+                        let color = if pointer == self.pointer {
+                            [98, 114, 164, 255] // comment
+                        } else {
+                            [68, 71, 90, 255] // selection
+                        };
+                        draw_rect(self.size, pixels.frame_mut(), x, 200, 64, 64, color);
                         renderer.draw_number(
                             self.size,
                             pixels.frame_mut(), 
@@ -99,14 +105,32 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                         let pc = self.pc + i - 4;
                         let x = (96 + i * 66) as u32;
-                        draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, [68, 71, 90, 255]);
+                        let color = if pc == self.pc {
+                            [98, 114, 164, 255] // comment
+                        } else {
+                            [68, 71, 90, 255] // selection
+                        };
+                        draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, color);
                         renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400);
                     }
 
                     for i in 0..16 {
                         for j in 0..32 {
-                            draw_rect(self.size, pixels.frame_mut(), offset+i*38, j*38, 36, 36, [255, 0, 0, 255]);
-                            renderer.draw_char(self.size, pixels.frame_mut(), '0', offset+i*38, j*38);
+                            let pointer = i + j * 16;
+                            if pointer >= self.memory.len() {
+                                continue;
+                            }
+
+                            let x = offset + i as u32 * 38;
+                            let y = j as u32 * 38;
+                            draw_rect(self.size, pixels.frame_mut(), x, y, 36, 36, [68, 71, 90, 255]);
+                            renderer.draw_number(
+                                self.size,
+                                pixels.frame_mut(), 
+                                self.memory[pointer],
+                                x,
+                                y
+                            );
                         }
                     }
 
