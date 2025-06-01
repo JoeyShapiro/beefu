@@ -11,6 +11,12 @@ use winit::keyboard::{Key, NamedKey};
 use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
 use winit::window::{Window, WindowId};
 
+const MEM_BLOCK: u32 = 50;
+const THEME_BACKGROUND: [u8; 4] = [40, 42, 54, 255];    // base background color
+const THEME_FOREGROUND: [u8; 4] = [248, 248, 242, 255]; // foreground color
+const THEME_SELECTION:  [u8; 4] = [68, 71, 90, 255];    // selection color
+const THEME_COMMENT:    [u8; 4] = [98, 114, 164, 255];  // comment color. odd using comment for current, but looks better
+
 #[derive(Default, Debug)]
 struct AppState<'a> {
     window: Option<Arc<Window>>,
@@ -68,20 +74,18 @@ impl<'a> ApplicationHandler for AppState<'a> {
         };
 
         match event {
-           WindowEvent::KeyboardInput {
+            WindowEvent::KeyboardInput {
                 event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
                 ..
             } => match key.as_ref() {
-                Key::Named(NamedKey::Space) => {
-                    self.step = true;
-                },
+                Key::Named(NamedKey::Space) => self.step = true,
                 _ => (),
             },
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 if let Some(pixels) = &mut self.pixels {
                     let offset = self.size.width / 2;
-                    clear_background(pixels.frame_mut(), [40, 42, 54, 255]);
+                    clear_background(pixels.frame_mut(), THEME_BACKGROUND);
                     let renderer = self.renderer.as_mut().unwrap();
 
                     // print the memory nearby
@@ -92,11 +96,10 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                         let pointer = self.pointer + i - 4;
                         let x = (96 + i * 66) as u32;
-                        // odd using comment for current, but looks better
                         let color = if pointer == self.pointer {
-                            [98, 114, 164, 255] // comment
+                            THEME_COMMENT
                         } else {
-                            [68, 71, 90, 255] // selection
+                            THEME_SELECTION
                         };
                         draw_rect(self.size, pixels.frame_mut(), x, 200, 64, 64, color);
                         renderer.draw_number(
@@ -117,31 +120,32 @@ impl<'a> ApplicationHandler for AppState<'a> {
                         let pc = self.pc + i - 4;
                         let x = (96 + i * 66) as u32;
                         let color = if pc == self.pc {
-                            [98, 114, 164, 255] // comment
+                            THEME_COMMENT
                         } else {
-                            [68, 71, 90, 255] // selection
+                            THEME_SELECTION
                         };
                         draw_rect(self.size, pixels.frame_mut(), x, 400, 64, 64, color);
                         renderer.draw_char(self.size, pixels.frame_mut(), self.rom[pc as usize] as char, x, 400);
                         renderer.draw_number(self.size, pixels.frame_mut(), pc as u8, x, 440);
                     }
 
+                    let js = self.size.height / MEM_BLOCK - 1;
                     for i in 0..16 {
-                        for j in 0..32 {
-                            let pointer = i + j * 16;
+                        for j in 0..js {
+                            let pointer = (i + j * 16) as usize;
                             if pointer >= self.memory.len() {
                                 continue;
                             }
 
-                            let x = offset + i as u32 * 50;
-                            let y = j as u32 * 50;
+                            let x = offset + i as u32 * MEM_BLOCK;
+                            let y = j as u32 * MEM_BLOCK;
                             // handles underflow. usize.saturating_sub(4)
                             let color = if pointer+4 >= self.pointer && pointer <= self.pointer+4 {
-                                [98, 114, 164, 255] // comment
+                                THEME_COMMENT
                             } else {
-                                [68, 71, 90, 255] // selection
+                                THEME_SELECTION
                             };
-                            draw_rect(self.size, pixels.frame_mut(), x, y, 48, 48, color);
+                            draw_rect(self.size, pixels.frame_mut(), x, y, MEM_BLOCK-2, MEM_BLOCK-2, color);
                             renderer.draw_number(
                                 self.size,
                                 pixels.frame_mut(), 
@@ -195,10 +199,10 @@ impl Renderer {
             if x < size.width && y < size.height {
                 let pixel_index = (y * size.width + x) as usize * 4;
                 if pixel_index < frame.len() {
-                    frame[pixel_index]     = 255; // R
-                    frame[pixel_index + 1] = 255; // G
-                    frame[pixel_index + 2] = 255; // B
-                    frame[pixel_index + 3] = 255; // A
+                    frame[pixel_index]     = THEME_FOREGROUND[0]; // R
+                    frame[pixel_index + 1] = THEME_FOREGROUND[1]; // G
+                    frame[pixel_index + 2] = THEME_FOREGROUND[2]; // B
+                    frame[pixel_index + 3] = THEME_FOREGROUND[3]; // A
                 }
             }
         }
