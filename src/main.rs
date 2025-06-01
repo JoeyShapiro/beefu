@@ -75,12 +75,18 @@ impl<'a> ApplicationHandler for AppState<'a> {
 
                     // print the memory nearby
                     for i in 0..9 {
-                        draw_rect(self.size, pixels.frame_mut(), 96 + i * 66, 200, 64, 64, [0, 255, 0, 255]);
-                        renderer.draw_char(
-                            self.size, 
+                        if (self.pointer + i) as i32 - 4 < 0 || self.pointer+i >= 30_000 {
+                            continue;
+                        }
+
+                        let pointer = self.pointer + i - 4;
+                        let x = (96 + i * 66) as u32;
+                        draw_rect(self.size, pixels.frame_mut(), x, 200, 64, 64, [68, 71, 90, 255]);
+                        renderer.draw_number(
+                            self.size,
                             pixels.frame_mut(), 
-                            '0', 
-                            96 + i * 66, 
+                            self.memory[pointer],
+                            x, 
                             200
                         );
                     }
@@ -153,6 +159,17 @@ impl Renderer {
                     frame[pixel_index + 3] = 255; // A
                 }
             }
+        }
+    }
+
+    fn draw_number(&mut self, size: PhysicalSize<u32>, frame: &mut [u8], n: u8, x: u32, y: u32) {
+        // assumes mono font
+        let (metrics, _) = self.get_char('0');
+        let w = metrics.width as u32;
+
+        // could use n % 10; n /= 10
+        for (i, c) in n.to_string().chars().enumerate() {
+            self.draw_char(size, frame, c, x + i as u32 * w, y);
         }
     }
 }
