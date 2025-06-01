@@ -17,6 +17,29 @@ const THEME_FOREGROUND: [u8; 4] = [248, 248, 242, 255]; // foreground color
 const THEME_SELECTION:  [u8; 4] = [68, 71, 90, 255];    // selection color
 const THEME_COMMENT:    [u8; 4] = [98, 114, 164, 255];  // comment color. odd using comment for current, but looks better
 
+#[derive(Debug)]
+enum Layout {
+    Number,
+    Ascii,
+    Color,
+}
+
+impl Default for Layout {
+    fn default() -> Self {
+        Layout::Number
+    }
+}
+
+impl Layout {
+    fn next(&mut self) {
+        *self = match self {
+            Layout::Number => Layout::Ascii,
+            Layout::Ascii => Layout::Color,
+            Layout::Color => Layout::Number,
+        };
+    }
+}
+
 #[derive(Default, Debug)]
 struct AppState<'a> {
     window: Option<Arc<Window>>,
@@ -29,6 +52,7 @@ struct AppState<'a> {
     stack: Vec<usize>,
     pc: usize,
     step: bool,
+    layout: Layout,
 }
 
 impl AppState<'_> {
@@ -44,7 +68,7 @@ impl AppState<'_> {
 
 impl<'a> ApplicationHandler for AppState<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title("A fantastic window!");
+        let window_attributes = Window::default_attributes().with_title("Beefu");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         let window_size = window.as_ref().inner_size();
@@ -79,6 +103,10 @@ impl<'a> ApplicationHandler for AppState<'a> {
                 ..
             } => match key.as_ref() {
                 Key::Named(NamedKey::Space) => self.step = true,
+                Key::Character("l") => {
+                    self.layout.next();
+                    self.update();
+                }
                 _ => (),
             },
             WindowEvent::CloseRequested => event_loop.exit(),
@@ -130,6 +158,11 @@ impl<'a> ApplicationHandler for AppState<'a> {
                     }
 
                     let js = self.size.height / MEM_BLOCK - 1;
+                    for j in 0..js {
+                        let y = j as u32 * MEM_BLOCK;
+                        renderer.draw_number(self.size, pixels.frame_mut(), j as u8, offset-MEM_BLOCK, y);
+                    }
+
                     for i in 0..16 {
                         for j in 0..js {
                             let pointer = (i + j * 16) as usize;
@@ -146,13 +179,46 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                 THEME_SELECTION
                             };
                             draw_rect(self.size, pixels.frame_mut(), x, y, MEM_BLOCK-2, MEM_BLOCK-2, color);
-                            renderer.draw_number(
-                                self.size,
-                                pixels.frame_mut(), 
-                                self.memory[pointer],
-                                x,
-                                y
-                            );
+                            match self.layout {
+                                Layout::Number => {
+                                    renderer.draw_number(
+                                        self.size,
+                                        pixels.frame_mut(), 
+                                        self.memory[pointer],
+                                        x + 2, 
+                                        y + 2
+                                    );
+                                },
+                                Layout::Ascii => {
+                                    let c = self.memory[pointer] as char;
+                                    if c.is_ascii() && !c.is_control() {
+                                        renderer.draw_char(
+                                            self.size,
+                                            pixels.frame_mut(), 
+                                            c, 
+                                            x + 2, 
+                                            y + 2
+                                        );
+                                    } else {
+                                        renderer.draw_number(
+                                            self.size,
+                                            pixels.frame_mut(), 
+                                            self.memory[pointer],
+                                            x + 2, 
+                                            y + 2
+                                        );
+                                    }
+                                },
+                                Layout::Color => {
+                                    let color = [
+                                        self.memory[pointer],
+                                        self.memory[pointer],
+                                        self.memory[pointer],
+                                        255,
+                                    ];
+                                    draw_rect(self.size, pixels.frame_mut(), x + 4, y + 4, MEM_BLOCK-8, MEM_BLOCK-4, color);
+                                },
+                            }
                         }
                     }
 
