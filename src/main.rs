@@ -5,8 +5,9 @@ use std::time::Duration;
 
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::keyboard::{Key, NamedKey};
 use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
 use winit::window::{Window, WindowId};
 
@@ -21,6 +22,7 @@ struct AppState<'a> {
     pointer: usize,
     stack: Vec<usize>,
     pc: usize,
+    step: bool,
 }
 
 impl AppState<'_> {
@@ -66,6 +68,15 @@ impl<'a> ApplicationHandler for AppState<'a> {
         };
 
         match event {
+           WindowEvent::KeyboardInput {
+                event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
+                ..
+            } => match key.as_ref() {
+                Key::Named(NamedKey::Space) => {
+                    self.step = true;
+                },
+                _ => (),
+            },
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::RedrawRequested => {
                 if let Some(pixels) = &mut self.pixels {
@@ -252,8 +263,6 @@ fn main() {
     }
 
     loop {
-        app.lock().unwrap().update();
-
         let timeout = Some(Duration::ZERO);
         let status = event_loop.pump_app_events(timeout, &mut *app.lock().unwrap());
 
@@ -263,7 +272,8 @@ fn main() {
         }
 
         // vm loop
-        {
+        if app.lock().unwrap().step {
+            app.lock().unwrap().step = false;
             let mut app = app.lock().unwrap();
             let mut pointer = app.pointer;
             let mut pc = app.pc;
@@ -319,14 +329,16 @@ fn main() {
             pc += 1;
             app.pc = pc;
             app.pointer = pointer;
+
+            app.update();
+            // good enough
+            if delay > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(delay));
+                app.step = true;
+            }
         }
 
-        if delay > 0 {
-            // TODO move update into here or something
-            std::thread::sleep(std::time::Duration::from_millis(delay));
-        } else {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-        }
+        std::thread::sleep(std::time::Duration::from_millis(16));
     }
 }
 
