@@ -42,6 +42,7 @@ impl Layout {
 
 #[derive(Default, Debug)]
 struct AppState<'a> {
+    title: Option<String>,
     window: Option<Arc<Window>>,
     pixels: Option<pixels::Pixels<'a>>,
     size: PhysicalSize<u32>,
@@ -69,7 +70,8 @@ impl AppState<'_> {
 
 impl<'a> ApplicationHandler for AppState<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title("Beefu");
+        let title = self.title.clone().unwrap_or("Beefu".to_string());
+        let window_attributes = Window::default_attributes().with_title(title);
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         let window_size = window.as_ref().inner_size();
@@ -99,6 +101,13 @@ impl<'a> ApplicationHandler for AppState<'a> {
         };
 
         match event {
+            WindowEvent::Resized(size) => {
+                self.size = size;
+                if let Some(pixels) = &mut self.pixels {
+                    pixels.resize_surface(size.width, size.height).unwrap();
+                }
+                window.request_redraw();
+            },
             WindowEvent::KeyboardInput {
                 event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
                 ..
@@ -338,6 +347,9 @@ fn main() {
     let app = Arc::new(std::sync::Mutex::new(AppState::default()));
 
     {
+        let file_name = file.split('/').last().unwrap();
+        app.lock().unwrap().title = Some(format!("Beefu - {} ({}B {}ms)", file_name, mem_size, delay));
+
         app.lock().unwrap().rom = std::fs::read(file).expect("Unable to read file");
 
         // Read the font data.
