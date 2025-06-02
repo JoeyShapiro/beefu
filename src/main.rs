@@ -53,6 +53,7 @@ struct AppState<'a> {
     pc: usize,
     step: bool,
     layout: Layout,
+    scroll: u32,
 }
 
 impl AppState<'_> {
@@ -105,6 +106,18 @@ impl<'a> ApplicationHandler for AppState<'a> {
                 Key::Named(NamedKey::Space) => self.step = true,
                 Key::Character("l") => {
                     self.layout.next();
+                    self.update();
+                }
+                Key::Named(NamedKey::ArrowUp) => {
+                    if self.scroll > 0 {
+                        self.scroll -= 1;
+                    }
+                    self.update();
+                }
+                Key::Named(NamedKey::ArrowDown) => {
+                    if self.scroll < self.memory.len() as u32 / 16 {
+                        self.scroll += 1;
+                    }
                     self.update();
                 }
                 _ => (),
@@ -161,12 +174,12 @@ impl<'a> ApplicationHandler for AppState<'a> {
                     let js = self.size.height / MEM_BLOCK - 1;
                     for j in 0..js {
                         let y = j as u32 * MEM_BLOCK;
-                        renderer.draw_number(self.size, pixels.frame_mut(), j as u8, offset-MEM_BLOCK, y, THEME_FOREGROUND);
+                        renderer.draw_number(self.size, pixels.frame_mut(), (j+self.scroll) as u8, offset-MEM_BLOCK, y, THEME_FOREGROUND);
                     }
 
                     for i in 0..16 {
                         for j in 0..js {
-                            let pointer = (i + j * 16) as usize;
+                            let pointer = (i + (j+self.scroll) * 16) as usize;
                             if pointer >= self.memory.len() {
                                 continue;
                             }
