@@ -47,7 +47,7 @@ struct AppState<'a> {
     size: PhysicalSize<u32>,
     renderer: Option<Renderer>,
     rom: Vec<u8>,
-    memory: Vec<u8>,
+    ram: Vec<u8>,
     pointer: usize,
     stack: Vec<usize>,
     pc: usize,
@@ -115,7 +115,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
                     self.update();
                 }
                 Key::Named(NamedKey::ArrowDown) => {
-                    if self.scroll < self.memory.len() as u32 / 16 {
+                    if self.scroll < self.ram.len() as u32 / 16 {
                         self.scroll += 1;
                     }
                     self.update();
@@ -146,7 +146,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
                         renderer.draw_number(
                             self.size,
                             pixels.frame_mut(), 
-                            self.memory[pointer],
+                            self.ram[pointer],
                             x, 
                             200,
                             THEME_FOREGROUND
@@ -180,7 +180,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
                     for i in 0..16 {
                         for j in 0..js {
                             let pointer = (i + (j+self.scroll) * 16) as usize;
-                            if pointer >= self.memory.len() {
+                            if pointer >= self.ram.len() {
                                 continue;
                             }
 
@@ -198,14 +198,14 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                     renderer.draw_number(
                                         self.size,
                                         pixels.frame_mut(), 
-                                        self.memory[pointer],
+                                        self.ram[pointer],
                                         x + 2,
                                         y + 2,
                                         THEME_FOREGROUND
                                     );
                                 },
                                 Layout::Ascii => {
-                                    let c = self.memory[pointer] as char;
+                                    let c = self.ram[pointer] as char;
                                     if c.is_ascii() && !c.is_control() {
                                         renderer.draw_char(
                                             self.size,
@@ -219,7 +219,7 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                         renderer.draw_number(
                                             self.size,
                                             pixels.frame_mut(), 
-                                            self.memory[pointer],
+                                            self.ram[pointer],
                                             x + 2, 
                                             y + 2,
                                             THEME_BACKGROUND
@@ -228,9 +228,9 @@ impl<'a> ApplicationHandler for AppState<'a> {
                                 },
                                 Layout::Color => {
                                     let color = [
-                                        self.memory[pointer],
-                                        self.memory[pointer],
-                                        self.memory[pointer],
+                                        self.ram[pointer],
+                                        self.ram[pointer],
+                                        self.ram[pointer],
                                         255,
                                     ];
                                     draw_rect(self.size, pixels.frame_mut(), x + 4, y + 4, MEM_BLOCK-8, MEM_BLOCK-4, color);
@@ -346,7 +346,7 @@ fn main() {
         let font = fontdue::Font::from_bytes(data, fontdue::FontSettings::default()).unwrap();
         app.lock().unwrap().renderer = Some(Renderer::new(font));
 
-        app.lock().unwrap().memory = vec![0_u8; mem_size];
+        app.lock().unwrap().ram = vec![0_u8; mem_size];
     }
 
     loop {
@@ -372,7 +372,7 @@ fn main() {
             match app.rom[pc] as char {
                 '>' => {
                     pointer += 1;
-                    if pointer >= app.memory.len() {
+                    if pointer >= app.ram.len() {
                         panic!("Pointer out of bounds");
                     }
                 }
@@ -382,14 +382,14 @@ fn main() {
                     }
                     pointer -= 1;
                 }
-                '+' => app.memory[pointer] += 1,
-                '-' => app.memory[pointer] -= 1,
+                '+' => app.ram[pointer] += 1,
+                '-' => app.ram[pointer] -= 1,
                 '[' => app.stack.push(pc),
                 ']' => {
                     if app.stack.is_empty() {
                         panic!("Unmatched closing bracket");
                     }
-                    if app.memory[pointer] != 0 {
+                    if app.ram[pointer] != 0 {
                         let start = app.stack.pop().unwrap();
                         pc = start - 1;
                     } else {
@@ -404,10 +404,10 @@ fn main() {
                     // doesnt matter though, i will have ui anyway
                     let mut input = [0; 2];
                     std::io::stdin().read(&mut input).expect("Unable to read input");
-                    app.memory[pointer] = input[0];
+                    app.ram[pointer] = input[0];
                 },
                 '.' => {
-                    print!("{}", app.memory[pointer] as char);
+                    print!("{}", app.ram[pointer] as char);
                     std::io::Write::flush(&mut std::io::stdout()).unwrap();
                 },
                 _ => {}
