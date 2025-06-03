@@ -103,6 +103,8 @@ impl<'a> ApplicationHandler for AppState<'a> {
         match event {
             WindowEvent::Resized(size) => {
                 // TODO likely wont work on hyprland
+                // wanted to make it on there, but on here
+                // wouldve been better, but oh well, next time
                 self.size = size;
                 if let Some(pixels) = &mut self.pixels {
                     pixels.resize_surface(size.width, size.height).unwrap();
